@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spotlight: Color contrast checker</title>
+    <meta
+      name="description"
+      content="Free WCAG color contrast checker for hex and RGB colors. Runs locally in your browser with shareable URL hash state."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:;"
+    />
+    <style>
+      :root {
+        --bg: #0e0619;
+        --surface: #241539;
+        --surface-2: #2b1a42;
+        --input-bg: #140a22;
+        --text: #fff2de;
+        --muted: #d2cae2;
+        --line: #4b2d6e;
+        --accent: #86e3be;
+        --accent-ink: #140a22;
+        --gold: #ffc857;
+        --ok-bg: #133128;
+        --ok-ink: #c2ffe6;
+        --warn-bg: #3b1720;
+        --warn-ink: #ffd2c7;
+        color-scheme: dark;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #fbf4ea;
+          --surface: #ffffff;
+          --surface-2: #f7efe3;
+          --input-bg: #ffffff;
+          --text: #1e1033;
+          --muted: #4a3c63;
+          --line: #b7a9c8;
+          --accent: #0f6b4c;
+          --accent-ink: #ffffff;
+          --gold: #7c4a00;
+          --ok-bg: #e4f7ee;
+          --ok-ink: #0f563d;
+          --warn-bg: #fdece8;
+          --warn-ink: #8f2414;
+          color-scheme: light;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 400 1rem/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(100% - 2rem, 64rem);
+        margin: 0 auto;
+        padding: 2rem 0 3rem;
+        display: grid;
+        gap: 1.5rem;
+      }
+      h1, h2, h3 { margin: 0 0 0.45rem; line-height: 1.2; }
+      h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); }
+      p { margin: 0 0 0.75rem; }
+      a { color: var(--accent); }
+      .mono { font-family: ui-monospace, Consolas, monospace; }
+      .muted { color: var(--muted); }
+      .card {
+        background: var(--surface);
+        border: 1.5px solid var(--line);
+        border-radius: 16px;
+        padding: 1.25rem;
+        display: grid;
+        gap: 1rem;
+      }
+      .two { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+      .three { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+      @media (min-width: 46rem) {
+        .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+      .color-row { display: flex; gap: 0.5rem; align-items: stretch; }
+      label { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 0.35rem; }
+      input[type="text"] {
+        width: 100%;
+        min-height: 2.75rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: 10px;
+        border: 1.5px solid var(--line);
+        background: var(--input-bg);
+        color: var(--text);
+        font: 500 1rem/1.4 ui-monospace, Consolas, monospace;
+      }
+      input[type="color"] {
+        width: 3.2rem;
+        min-height: 2.75rem;
+        padding: 0.2rem;
+        border-radius: 10px;
+        border: 1.5px solid var(--line);
+        background: var(--input-bg);
+        cursor: pointer;
+      }
+      button {
+        font: 700 0.9rem/1 system-ui, sans-serif;
+        min-height: 2.55rem;
+        padding: 0.55rem 0.95rem;
+        border-radius: 999px;
+        border: 1.5px solid var(--line);
+        background: var(--surface-2);
+        color: var(--text);
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+        border-color: var(--accent);
+      }
+      button:disabled { opacity: 1; color: var(--muted); cursor: not-allowed; }
+      button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        font: 700 0.8rem/1 ui-monospace, Consolas, monospace;
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        border: 1.5px solid currentColor;
+      }
+      .pill.pass { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok-ink); }
+      .pill.fail { background: var(--warn-bg); color: var(--warn-ink); border-color: var(--warn-ink); }
+      .preview {
+        border-radius: 12px;
+        border: 2px solid var(--line);
+        padding: 1.25rem;
+        display: grid;
+        gap: 0.75rem;
+      }
+      .ratio { font: 700 clamp(1.8rem, 4vw, 2.4rem)/1 ui-monospace, Consolas, monospace; }
+      .subcard {
+        background: var(--surface-2);
+        border: 1.5px solid var(--line);
+        border-radius: 12px;
+        padding: 1rem;
+        display: grid;
+        gap: 0.6rem;
+      }
+      .swatch {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.7rem 0.85rem;
+        border-radius: 10px;
+        border: 1.5px solid var(--line);
+        font: 700 0.95rem/1.3 ui-monospace, Consolas, monospace;
+      }
+      .err {
+        padding: 0.6rem 0.8rem;
+        border-radius: 10px;
+        background: var(--warn-bg);
+        color: var(--warn-ink);
+        border: 1.5px solid var(--warn-ink);
+        font-size: 0.9rem;
+      }
+      [hidden] { display: none !important; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation: none !important; transition: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="mono muted">Spotlight · MIT · Runs locally in your browser</p>
+        <h1>Color contrast checker</h1>
+        <p class="muted">
+          Check WCAG AA and AAA contrast for hex or RGB colors, preview text and UI parts live, and grab the nearest passing color.
+          Live edition at <a href="https://patchbandit.com/tools/contrast-checker/" target="_blank" rel="noopener noreferrer">patchbandit.com/tools/contrast-checker</a>.
+        </p>
+      </header>
+
+      <section class="card" aria-labelledby="colors-h">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="colors-h">1. Pick two colors</h2>
+          <div class="row">
+            <button type="button" id="swap-btn">Swap colors</button>
+            <button type="button" class="primary" id="share-btn">Copy share link</button>
+          </div>
+        </div>
+        <div class="two">
+          <div>
+            <label for="fg-in">Text or foreground color (hex or RGB)</label>
+            <div class="color-row">
+              <input id="fg-pick" type="color" value="#fff2de" aria-label="Pick text color" />
+              <input id="fg-in" type="text" maxlength="64" value="#fff2de" spellcheck="false" autocomplete="off" />
+            </div>
+            <p id="fg-err" class="err" role="alert" hidden></p>
+          </div>
+          <div>
+            <label for="bg-in">Background color (hex or RGB)</label>
+            <div class="color-row">
+              <input id="bg-pick" type="color" value="#140a22" aria-label="Pick background color" />
+              <input id="bg-in" type="text" maxlength="64" value="#140a22" spellcheck="false" autocomplete="off" />
+            </div>
+            <p id="bg-err" class="err" role="alert" hidden></p>
+          </div>
+        </div>
+        <div class="row">
+          <span class="ratio" id="ratio-out">17.34:1</span>
+          <span class="pill pass" id="grade-out">AAA</span>
+          <p id="verdict-out" role="status" aria-live="polite" aria-atomic="true" style="margin:0">17.34:1. Sharp and clear everywhere. Passes small text, big headings, and UI parts at AAA.</p>
+        </div>
+        <p id="status-out" class="muted" role="status" aria-live="polite" style="margin:0">
+          Shareable state lives in the URL hash only. Nothing is sent anywhere.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="prev-h">
+        <h2 id="prev-h">2. Live preview and WCAG checks</h2>
+        <div class="preview" id="preview">
+          <p style="font-size:1.5rem;font-weight:700;margin:0">Big heading preview at 24px bold</p>
+          <p style="margin:0">Normal body text at 16px. Check whether a visitor can read a paragraph cleanly without squinting.</p>
+          <div class="row">
+            <span style="padding:0.45rem 0.9rem;border:2px solid currentColor;border-radius:999px;font-weight:700">Button</span>
+            <span style="padding:0.45rem 0.8rem;border:2px solid currentColor;border-radius:8px" class="mono">Input border</span>
+          </div>
+        </div>
+        <div class="three">
+          <div class="subcard">
+            <h3>Normal text</h3>
+            <div class="row">
+              <span class="pill pass" id="chk-naa">AA 4.5:1 Pass</span>
+              <span class="pill pass" id="chk-naaa">AAA 7:1 Pass</span>
+            </div>
+          </div>
+          <div class="subcard">
+            <h3>Large text</h3>
+            <div class="row">
+              <span class="pill pass" id="chk-laa">AA 3:1 Pass</span>
+              <span class="pill pass" id="chk-laaa">AAA 4.5:1 Pass</span>
+            </div>
+          </div>
+          <div class="subcard">
+            <h3>UI parts</h3>
+            <div class="row">
+              <span class="pill pass" id="chk-ui">AA 3:1 Pass</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="near-h">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="near-h">3. Nearest passing color</h2>
+          <div class="row" role="group" aria-label="Target contrast ratio">
+            <button type="button" data-target="4.5" aria-pressed="true">AA 4.5:1</button>
+            <button type="button" data-target="7" aria-pressed="false">AAA 7:1</button>
+            <button type="button" data-target="3" aria-pressed="false">UI 3:1</button>
+          </div>
+        </div>
+        <div class="two">
+          <div class="subcard">
+            <h3>Adjust text color</h3>
+            <div class="swatch" id="near-fg-swatch"><span id="near-fg-hex"></span><span id="near-fg-ratio"></span></div>
+            <p id="near-fg-msg" class="muted" style="margin:0"></p>
+            <button type="button" class="primary" id="apply-fg">Use text color</button>
+          </div>
+          <div class="subcard">
+            <h3>Adjust background color</h3>
+            <div class="swatch" id="near-bg-swatch"><span id="near-bg-hex"></span><span id="near-bg-ratio"></span></div>
+            <p id="near-bg-msg" class="muted" style="margin:0"></p>
+            <button type="button" class="primary" id="apply-bg">Use background color</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const MAX_COLOR_INPUT_LENGTH = 64;
+        const MAX_HASH_LENGTH = 256;
+        const clamp = (n) => Math.min(255, Math.max(0, Math.round(n)));
+        const toHex = (c) =>
+          '#' + [c.r, c.g, c.b].map((v) => clamp(v).toString(16).padStart(2, '0')).join('');
+        const parseChannel = (raw) => {
+          if (!/^\d+$/.test(raw)) return null;
+          const n = Number(raw);
+          return Number.isInteger(n) && n >= 0 && n <= 255 ? n : null;
+        };
+        const parseColor = (input) => {
+          if (typeof input !== 'string' || input.length > MAX_COLOR_INPUT_LENGTH) return null;
+          const s = input.trim();
+          if (!s) return null;
+          const hm = s.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+          if (hm) {
+            const d = hm[1];
+            if (d.length === 3) {
+              return { r: parseInt(d[0] + d[0], 16), g: parseInt(d[1] + d[1], 16), b: parseInt(d[2] + d[2], 16) };
+            }
+            return { r: parseInt(d.slice(0, 2), 16), g: parseInt(d.slice(2, 4), 16), b: parseInt(d.slice(4, 6), 16) };
+          }
+          if (s.length >= 5 && s.slice(0, 4).toLowerCase() === 'rgb(' && s.endsWith(')')) {
+            const body = s.slice(4, -1).trim();
+            if (!body || body.includes('(') || body.includes(')')) return null;
+            const parts = body.includes(',') ? body.split(',').map((p) => p.trim()) : body.split(/\s+/);
+            if (parts.length !== 3) return null;
+            const r = parseChannel(parts[0]), g = parseChannel(parts[1]), b = parseChannel(parts[2]);
+            return r === null || g === null || b === null ? null : { r, g, b };
+          }
+          if (s.includes(',')) {
+            const parts = s.split(',').map((p) => p.trim());
+            if (parts.length === 3) {
+              const r = parseChannel(parts[0]), g = parseChannel(parts[1]), b = parseChannel(parts[2]);
+              if (r !== null && g !== null && b !== null) return { r, g, b };
+            }
+          }
+          return null;
+        };
+        const lum = (c) => {
+          const lin = (v) => { const s = clamp(v) / 255; return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+          return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+        };
+        const ratioOf = (a, b) => {
+          const l1 = lum(a), l2 = lum(b);
+          return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        };
+        const fmtRatio = (r) => {
+          const v = Math.round(r * 100) / 100;
+          return Number.isInteger(v) ? `${v}:1` : `${v.toFixed(2)}:1`;
+        };
+        const rgbToHsl = ({ r, g, b }) => {
+          const rn = r / 255, gn = g / 255, bn = b / 255;
+          const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn), l = (max + min) / 2, d = max - min;
+          if (!d) return { h: 0, s: 0, l };
+          const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          let h = max === rn ? ((gn - bn) / d + (gn < bn ? 6 : 0)) * 60 : max === gn ? ((bn - rn) / d + 2) * 60 : ((rn - gn) / d + 4) * 60;
+          return { h, s, l };
+        };
+        const hslToRgb = ({ h, s, l }) => {
+          if (!s) { const g = clamp(l * 255); return { r: g, g, b: g }; }
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+          const ch = (t) => {
+            let w = t < 0 ? t + 1 : t > 1 ? t - 1 : t;
+            if (w < 1 / 6) return p + (q - p) * 6 * w;
+            if (w < 1 / 2) return q;
+            if (w < 2 / 3) return p + (q - p) * (2 / 3 - w) * 6;
+            return p;
+          };
+          const hk = (((h % 360) + 360) % 360) / 360;
+          return { r: clamp(ch(hk + 1 / 3) * 255), g: clamp(ch(hk) * 255), b: clamp(ch(hk - 1 / 3) * 255) };
+        };
+        const dist = (a, b) => {
+          const rm = (a.r + b.r) / 2, dr = a.r - b.r, dg = a.g - b.g, db = a.b - b.b;
+          return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+        };
+        const findNearest = (moving, fixed, target) => {
+          if (ratioOf(moving, fixed) >= target) return { rgb: moving, hex: toHex(moving), ratio: ratioOf(moving, fixed), dir: 'unchanged', flipsPolarity: false };
+          const hsl = rgbToHsl(moving);
+          const search = (dir) => {
+            const ext = dir === 'darker' ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 };
+            if (ratioOf(ext, fixed) < target) return null;
+            let best = ext, lo = dir === 'darker' ? 0 : hsl.l, hi = dir === 'darker' ? hsl.l : 1;
+            for (let i = 0; i < 24; i++) {
+              const mid = (lo + hi) / 2, cand = hslToRgb({ h: hsl.h, s: hsl.s, l: mid });
+              if (ratioOf(cand, fixed) >= target) { best = cand; if (dir === 'darker') lo = mid; else hi = mid; }
+              else if (dir === 'darker') hi = mid; else lo = mid;
+            }
+            return best;
+          };
+          const d = search('darker'), l = search('lighter');
+          if (!d && !l) return null;
+          const pick = d && l ? (dist(moving, d) <= dist(moving, l) ? { rgb: d, dir: 'darker' } : { rgb: l, dir: 'lighter' }) : d ? { rgb: d, dir: 'darker' } : { rgb: l, dir: 'lighter' };
+          const mLum = lum(moving), fLum = lum(fixed), cLum = lum(pick.rgb);
+          const flipsPolarity = (mLum > fLum && cLum < fLum) || (mLum < fLum && cLum > fLum);
+          return { rgb: pick.rgb, hex: toHex(pick.rgb), ratio: ratioOf(pick.rgb, fixed), dir: pick.dir, flipsPolarity };
+        };
+
+        let fg = parseColor('#fff2de');
+        let bg = parseColor('#140a22');
+        let target = 4.5;
+        let nearFgHex = '';
+        let nearBgHex = '';
+
+        const $ = (id) => document.getElementById(id);
+        const setPill = (id, label, ok) => {
+          const el = $(id);
+          el.textContent = `${label} ${ok ? 'Pass' : 'Fail'}`;
+          el.className = `pill ${ok ? 'pass' : 'fail'}`;
+        };
+        const setDisabledSafely = (btn, disabled, fallback) => {
+          if (disabled && document.activeElement === btn) fallback.focus();
+          btn.disabled = disabled;
+        };
+
+        const render = (syncInputs, pushHash) => {
+          const fh = toHex(fg), bh = toHex(bg);
+          $('fg-pick').value = fh;
+          $('bg-pick').value = bh;
+          if (syncInputs) {
+            $('fg-in').value = fh;
+            $('bg-in').value = bh;
+            $('fg-err').hidden = true;
+            $('bg-err').hidden = true;
+          }
+          const r = ratioOf(fg, bg);
+          const formatted = fmtRatio(r);
+          $('ratio-out').textContent = formatted;
+          const grade = r >= 7 ? 'AAA' : r >= 4.5 ? 'AA' : r >= 3 ? 'AA Large' : 'Fail';
+          $('grade-out').textContent = grade;
+          $('grade-out').className = `pill ${r >= 4.5 ? 'pass' : 'fail'}`;
+          const verdict =
+            r >= 7 ? 'Sharp and clear everywhere. Passes small text, big headings, and UI parts at AAA.' :
+            r >= 4.5 ? 'Solid for normal text, big headings, and UI parts at AA. Push it higher if you want AAA for small text.' :
+            r >= 3 ? 'Too faint for small text. Fine for big headings and UI parts.' :
+            'Too faint for text and UI parts. Hard to read at any size.';
+          $('verdict-out').textContent = `${formatted}. ${verdict}`;
+
+          const pv = $('preview');
+          pv.style.color = fh;
+          pv.style.backgroundColor = bh;
+
+          setPill('chk-naa', 'AA 4.5:1', r >= 4.5);
+          setPill('chk-naaa', 'AAA 7:1', r >= 7);
+          setPill('chk-laa', 'AA 3:1', r >= 3);
+          setPill('chk-laaa', 'AAA 4.5:1', r >= 4.5);
+          setPill('chk-ui', 'AA 3:1', r >= 3);
+
+          const nf = findNearest(fg, bg, target);
+          nearFgHex = nf ? nf.hex : '';
+          $('near-fg-swatch').style.color = nf ? nf.hex : fh;
+          $('near-fg-swatch').style.backgroundColor = bh;
+          $('near-fg-hex').textContent = nf ? nf.hex : 'No match';
+          $('near-fg-ratio').textContent = nf ? fmtRatio(nf.ratio) : `${target}:1`;
+          $('near-fg-msg').textContent = !nf
+            ? `No text color hits ${target}:1 on ${bh}.`
+            : nf.dir === 'unchanged'
+              ? `Already clears ${target}:1.`
+              : `Shift text ${nf.dir} to ${nf.hex}${nf.flipsPolarity ? ' (flips light/dark)' : ''} (${fmtRatio(nf.ratio)}).`;
+          setDisabledSafely($('apply-fg'), !nf || nf.dir === 'unchanged', $('fg-in'));
+
+          const nb = findNearest(bg, fg, target);
+          nearBgHex = nb ? nb.hex : '';
+          $('near-bg-swatch').style.color = fh;
+          $('near-bg-swatch').style.backgroundColor = nb ? nb.hex : bh;
+          $('near-bg-hex').textContent = nb ? nb.hex : 'No match';
+          $('near-bg-ratio').textContent = nb ? fmtRatio(nb.ratio) : `${target}:1`;
+          $('near-bg-msg').textContent = !nb
+            ? `No background color hits ${target}:1 behind ${fh}.`
+            : nb.dir === 'unchanged'
+              ? `Already clears ${target}:1.`
+              : `Shift background ${nb.dir} to ${nb.hex}${nb.flipsPolarity ? ' (flips light/dark)' : ''} (${fmtRatio(nb.ratio)}).`;
+          setDisabledSafely($('apply-bg'), !nb || nb.dir === 'unchanged', $('bg-in'));
+
+          if (pushHash) {
+            try { history.replaceState(null, '', `#fg=${fh.slice(1)}&bg=${bh.slice(1)}`); } catch {}
+          }
+        };
+
+        const loadHash = () => {
+          if (location.hash.length <= MAX_HASH_LENGTH) {
+            const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+            const pFg = parseColor(p.get('fg'));
+            const pBg = parseColor(p.get('bg'));
+            if (pFg) fg = pFg;
+            if (pBg) bg = pBg;
+          }
+          render(true, false);
+        };
+
+        $('fg-in').addEventListener('input', (e) => {
+          const c = parseColor(e.target.value);
+          if (!c) { $('fg-err').hidden = false; $('fg-err').textContent = 'Enter hex (#777, #140a22) or rgb(20, 10, 34).'; return; }
+          $('fg-err').hidden = true; fg = c; render(false, true);
+        });
+        $('bg-in').addEventListener('input', (e) => {
+          const c = parseColor(e.target.value);
+          if (!c) { $('bg-err').hidden = false; $('bg-err').textContent = 'Enter hex (#fff, #fff2de) or rgb(255, 242, 222).'; return; }
+          $('bg-err').hidden = true; bg = c; render(false, true);
+        });
+        $('fg-pick').addEventListener('input', (e) => { fg = parseColor(e.target.value) || fg; $('fg-in').value = toHex(fg); $('fg-err').hidden = true; render(false, true); });
+        $('bg-pick').addEventListener('input', (e) => { bg = parseColor(e.target.value) || bg; $('bg-in').value = toHex(bg); $('bg-err').hidden = true; render(false, true); });
+        $('swap-btn').addEventListener('click', () => { const t = fg; fg = bg; bg = t; render(true, true); });
+        $('share-btn').addEventListener('click', async () => {
+          const hash = `#fg=${toHex(fg).slice(1)}&bg=${toHex(bg).slice(1)}`;
+          try { history.replaceState(null, '', hash); } catch {}
+          try { await navigator.clipboard.writeText(location.href); $('status-out').textContent = `Copied share link (${hash}).`; }
+          catch { $('status-out').textContent = `Share hash ready: ${hash}`; }
+        });
+        $('apply-fg').addEventListener('click', () => { const c = parseColor(nearFgHex); if (c) { fg = c; $('fg-in').focus(); render(true, true); } });
+        $('apply-bg').addEventListener('click', () => { const c = parseColor(nearBgHex); if (c) { bg = c; $('bg-in').focus(); render(true, true); } });
+        document.querySelectorAll('[data-target]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            target = Number(btn.dataset.target);
+            document.querySelectorAll('[data-target]').forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+            render(false, false);
+          });
+        });
+        window.addEventListener('hashchange', loadHash);
+        loadHash();
+      })();
+    </script>
+  </body>
+</html>

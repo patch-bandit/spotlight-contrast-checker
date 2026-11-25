@@ -1,0 +1,22 @@
+{
+  "name": "spotlight-contrast-checker",
+  "version": "1.0.0",
+  "description": "Free, private WCAG color contrast checker. Everything runs in your browser or your terminal.",
+  "license": "MIT",
+  "author": "Patch Bandit (https://patchbandit.com)",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/core/index.ts"
+  },
+  "bin": {
+    "spotlight-contrast": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.ts",
+    "check": "node src/cli.ts"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

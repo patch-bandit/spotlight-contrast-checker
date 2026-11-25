@@ -1,0 +1,4 @@
+Spotlight uses no third-party runtime packages.
+
+Contrast calculations follow the public W3C WCAG 2.1 and 2.2 relative luminance
+and contrast ratio definitions. Tests run with Node's built-in test runner.
